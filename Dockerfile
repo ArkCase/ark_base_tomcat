@@ -48,6 +48,13 @@ FROM "${BASE_IMG}"
 
 ARG VER
 
+# Install the only binary dependency for the native library
+RUN yum -y install \
+        apr \
+        unzip \
+      && \
+    yum clean -y all
+
 ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_SRC
 
