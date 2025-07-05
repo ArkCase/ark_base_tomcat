@@ -1,0 +1,33 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+set_as_boolean TOMCAT_NATIVE_ENABLE "true"
+
+as_boolean "${TOMCAT_NATIVE_ENABLE}" || fail "The Tomcat native connector is not enabled"
+
+#
+# First off, which JVM are we on?
+#
+CURRENT_JAVA="$(set-java)" || fail "Failed to determine the JVM version"
+
+[ -v CATALINA_HOME ] || fail "CATALINA_HOME is not set"
+[ -n "${CATALINA_HOME}" ] || fail "CATALINA_HOME is set to an empty value"
+require_dir_readable "${CATALINA_HOME}"
+
+CATALINA_LIB="${CATALINA_HOME}/lib"
+require_dir_readwrite "${CATALINA_LIB}"
+
+CATALINA_NATIVE_LIB="${CATALINA_LIB}/native"
+require_dir_readable "${CATALINA_NATIVE_LIB}"
+
+SOURCE_DIR="${CATALINA_NATIVE_LIB}/${CURRENT_JAVA}"
+require_dir_readable "${SOURCE_DIR}"
+
+cd "${SOURCE_DIR}"
+doing "Clearing out any old modules..."
+rm -rvf "${CATALINA_LIB}"/libtcnative* || true
+doing "Installing the modules for Java ${CURRENT_JAVA}..."
+cp -vf * "${CATALINA_LIB}"
+quit "Tomcat native connector for Java ${CURRENT_JAVA} copied into [${CATALINA_LIB}]"

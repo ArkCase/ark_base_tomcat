@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -euo pipefail
+
+. /.functions
+
+define_base_vars "${0}"
+
+[ -v TOMCAT_NATIVE_URL ] || fail "Don't have a TOMCAT_NATIVE_URL to download from"
+set_or_default TOMCAT_NATIVE_BUILD_HOME "/tomcat-native"
+
+cleanup()
+{
+	rm -rf "${SRC}" &>/dev/null
+	rm -rf "${BUILDS[@]}" &>/dev/null
+}
+
+SRC="${TOMCAT_NATIVE_BUILD_HOME}/src.tar.gz"
+BUILDS=()
+
+mkdir -p "${TOMCAT_NATIVE_BUILD_HOME}"
+doing "Downloading the source file from [${TOMCAT_NATIVE_URL}]..."
+curl -fsSL -o "${SRC}" "${TOMCAT_NATIVE_URL}" || fail "Failed to download the source code"
+ok "Source code downloaded!"
+trap cleanup EXIT
+
+JAVA_VERSIONS=(11 17 21)
+
+running "Building for Java versions [${JAVA_VERSIONS[@]}]"
+for JAVA in "${JAVA_VERSIONS[@]}" ; do
+	say "Building for Java ${JAVA}..."
+	TARGET="${TOMCAT_NATIVE_BUILD_HOME}/${JAVA}"
+	BUILD="${TARGET}.build"
+	mkdir -p "${TARGET}" "${BUILD}" || fail "Failed to build the target and build directories at [${TOMCAT_NATIVE_BUILD_HOME}]"
+	BUILDS+=("${BUILD}")
+	(
+		set -euo pipefail
+		cd "${BUILD}"
+		tar --strip-components=1 -xzvf "${SRC}"
+		cd native
+		./configure --prefix="${TARGET}"
+		make
+		make install
+		cd "${TARGET}"
+		mv -vf lib/* .
+		rmdir lib
+	) || fail "Build for Java ${JAVA} failed"
+	ok "Build for Java ${JAVA} succeeded!"
+	find "${TARGET}" -type f | sort
+done
