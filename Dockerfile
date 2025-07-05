@@ -12,7 +12,6 @@ ARG VER="9.0.106"
 ARG TOMCAT_MAJOR_VER="9"
 ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
-# ARG TOMCAT_NATIVE_VER="1.2.35"
 ARG TOMCAT_NATIVE_VER="1.3.1"
 ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
 ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
