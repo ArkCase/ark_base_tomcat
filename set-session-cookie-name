@@ -1,0 +1,49 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+render()
+{
+	local SESSION_COOKIE_NAME="${1}"
+	cat <<-EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<Context sessionCookieName="${SESSION_COOKIE_NAME}">
+	</Context>
+	EOF
+}
+
+usage()
+{
+	[ ${#} -eq 0 ] || err "${@}\n"
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} context-xml [ cookie-name ]"
+	exit 1
+}
+
+[ ${#} -ge 1 ] || usage "Must provide the name of the context.xml file to edit"
+[ ${#} -le 2 ] || usage
+
+CONTEXT_XML="${1}"
+
+if [ ${#} -eq 2 ] ; then
+	SESSION_COOKIE_NAME="${2}"
+else
+	set_or_default SESSION_COOKIE_NAME
+fi
+
+[ -n "${SESSION_COOKIE_NAME}" ] || quit "No custom session cookie name given, no changes made to [${CONTEXT_XML}]"
+[[ "${SESSION_COOKIE_NAME,,}" =~ ^[-._a-z0-9]+$ ]] || fail "Invalid session cookie name [${SESSION_COOKIE_NAME}]"
+
+if is_file "${CONTEXT_XML}" ; then
+	require_file_writable "${CONTEXT_XML}"
+	doing "Setting the session cookie name to ${SESSION_COOKIE_NAME} ..."
+	xmlstarlet ed -P --inplace \
+		--update "/Context/@sessionCookieName" --value "${SESSION_COOKIE_NAME}" \
+		--insert "/Context[not(@sessionCookieName)]" --type attr --name "sessionCookieName" --value "${SESSION_COOKIE_NAME}" \
+		"${CONTEXT_XML}" || fail "Failed to edit the file [${CONTEXT_XML}] to set the new session cookie configuration"
+else
+	[ -e "${CONTEXT_XML}" ] && fail "The path [${CONTEXT_XML}] does not point to a regular file"
+	render "${SESSION_COOKIE_NAME}" >"${CONTEXT_XML}" || fail "Failed to create the file [${CONTEXT_XML}] to set the new session cookie configuration"
+fi
+
+ok "Configuration applied to [${CONTEXT_XML}]"

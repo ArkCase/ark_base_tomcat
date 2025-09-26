@@ -79,4 +79,4 @@ RUN mkdir -p "${TOMCAT_HOME}" && \
 COPY --from=builder "${TOMCAT_NATIVE_BUILD_HOME}/" "${TOMCAT_NATIVE_HOME}/"
 
 COPY setenv.sh "${TOMCAT_HOME}/bin"
-COPY install-tomcat-native-module "/usr/local/bin"
+COPY install-tomcat-native-module set-session-cookie-name "/usr/local/bin"
