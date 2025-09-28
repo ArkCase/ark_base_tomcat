@@ -10,7 +10,7 @@ as_boolean "${TOMCAT_NATIVE_ENABLE}" || fail "The Tomcat native connector is not
 #
 # First off, which JVM are we on?
 #
-CURRENT_JAVA="$(set-java)" || fail "Failed to determine the JVM version"
+CURRENT_JAVA="$(get-java)" || fail "Failed to determine the JVM version"
 
 [ -v CATALINA_HOME ] || fail "CATALINA_HOME is not set"
 [ -n "${CATALINA_HOME}" ] || fail "CATALINA_HOME is set to an empty value"
