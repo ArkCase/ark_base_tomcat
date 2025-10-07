@@ -18,21 +18,17 @@ ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
 ARG BASE_REPO="arkcase/base-java"
-ARG BASE_VER="8"
+ARG BASE_VER="22.04"
 ARG BASE_VER_PFX=""
 ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
 
 FROM "${BASE_IMG}" AS builder
 
-RUN yum -y install \
-        apr-devel \
-        gcc \
-        make \
-        openssl-devel \
-        redhat-rpm-config \
-        unzip \
+RUN apt-get -y install \
+        libapr1-dev \
+        libssl-dev \
       && \
-    yum clean -y all
+    apt-get clean
 
 #
 # Build the Tomcat native APR connector
@@ -48,11 +44,10 @@ FROM "${BASE_IMG}"
 ARG VER
 
 # Install the only binary dependency for the native library
-RUN yum -y install \
-        apr \
-        unzip \
+RUN apt-get -y install \
+        libapr1 \
       && \
-    yum clean -y all
+    apt-get clean
 
 ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_SRC

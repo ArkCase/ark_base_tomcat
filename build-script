@@ -29,6 +29,7 @@ JAVA_VERSIONS=(11 17 21)
 running "Building for Java versions [${JAVA_VERSIONS[@]}]"
 for JAVA in "${JAVA_VERSIONS[@]}" ; do
 	say "Building for Java ${JAVA}..."
+	set-java "${JAVA}" || fail "Failed to set the Java version to ${JAVA}"
 	TARGET="${TOMCAT_NATIVE_BUILD_HOME}/${JAVA}"
 	BUILD="${TARGET}.build"
 	mkdir -p "${TARGET}" "${BUILD}" || fail "Failed to build the target and build directories at [${TOMCAT_NATIVE_BUILD_HOME}]"
@@ -43,6 +44,7 @@ for JAVA in "${JAVA_VERSIONS[@]}" ; do
 		make install
 		cd "${TARGET}"
 		mv -vf lib/* .
+		strip *.so *.so.* *.a
 		rmdir lib
 	) || fail "Build for Java ${JAVA} failed"
 	ok "Build for Java ${JAVA} succeeded!"
