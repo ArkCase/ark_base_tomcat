@@ -10,10 +10,12 @@ ARG PUBLIC_REGISTRY="public.ecr.aws"
 ARG VER="10.1.48"
 
 ARG TOMCAT_MAJOR_VER="10"
-ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
+ARG TOMCAT_TGZ="apache-tomcat-${VER}.tar.gz"
+ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/${TOMCAT_TGZ}"
 
 ARG TOMCAT_NATIVE_VER="1.3.1"
-ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
+ARG TOMCAT_NATIVE_TGZ="tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
+ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/${TOMCAT_NATIVE_TGZ}"
 ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
@@ -33,6 +35,7 @@ RUN apt-get -y install \
 #
 # Build the Tomcat native APR connector
 #
+ARG TOMCAT_NATIVE_TGZ
 ARG TOMCAT_NATIVE_URL
 ARG TOMCAT_NATIVE_BUILD_HOME
 ENV TOMCAT_NATIVE_BUILD_HOME="${TOMCAT_NATIVE_BUILD_HOME}"
@@ -50,6 +53,7 @@ RUN apt-get -y install \
     apt-get clean
 
 ARG TOMCAT_NATIVE_BUILD_HOME
+ARG TOMCAT_TGZ
 ARG TOMCAT_SRC
 
 ENV TOMCAT_HOME="${BASE_DIR}/tomcat"
@@ -61,9 +65,17 @@ ENV CATALINA_BASE="${CATALINA_HOME}"
 #
 # Download and install Tomcat, and remove unwanted stuff
 #
-RUN mkdir -p "${TOMCAT_HOME}" && \
-    curl -fsSL "${TOMCAT_SRC}" | tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf - && \
-    rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
+RUN export TOMCAT_ASC="${TOMCAT_TGZ}.asc" && \
+    export TOMCAT_SUM="${TOMCAT_TGZ}.sha512" && \
+    mkdir -p "${TOMCAT_HOME}" && \
+    curl -fsSL -o "${TOMCAT_TGZ}" "${TOMCAT_SRC}" && \
+    curl -fsSL -o "${TOMCAT_ASC}" "${TOMCAT_SRC}.asc" && \
+    curl -fsSL -o "${TOMCAT_SUM}" "${TOMCAT_SRC}.sha512" && \
+    sha512sum -c "${TOMCAT_SUM}" && \
+    gpg --auto-key-retrieve --verify "${TOMCAT_ASC}" "${TOMCAT_TGZ}" && \
+    tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TOMCAT_TGZ}" && \
+    rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat && \
+    rm -rf "${TOMCAT_TGZ}" "${TOMCAT_ASC}" "${TOMCAT_SUM}"
 
 COPY --from=builder "${TOMCAT_NATIVE_BUILD_HOME}/" "${TOMCAT_NATIVE_HOME}/"
 

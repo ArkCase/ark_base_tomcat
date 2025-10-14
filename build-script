@@ -15,14 +15,25 @@ cleanup()
 	rm -rf "${BUILDS[@]}" &>/dev/null
 }
 
-SRC="${TOMCAT_NATIVE_BUILD_HOME}/src.tar.gz"
+SRC="${TOMCAT_NATIVE_BUILD_HOME}/${TOMCAT_NATIVE_TGZ}"
+ASC="${SRC}.asc"
+SUM="${SRC}.sha512"
 BUILDS=()
 
 mkdir -p "${TOMCAT_NATIVE_BUILD_HOME}"
 doing "Downloading the source file from [${TOMCAT_NATIVE_URL}]..."
 curl -fsSL -o "${SRC}" "${TOMCAT_NATIVE_URL}" || fail "Failed to download the source code"
+curl -fsSL -o "${ASC}" "${TOMCAT_NATIVE_URL}.asc" || fail "Failed to download the source code signature"
+curl -fsSL -o "${SUM}" "${TOMCAT_NATIVE_URL}.sha512" || fail "Failed to download the source code checksum"
 ok "Source code downloaded!"
 trap cleanup EXIT
+
+(
+	set -euo pipefail
+	cd "${TOMCAT_NATIVE_BUILD_HOME}"
+	sha512sum -c "${SUM}"
+	gpg --auto-key-retrieve --verify "${ASC}" "${SRC}"
+) || fail "Failed to verify the authenticity of the downloaded code"
 
 JAVA_VERSIONS=(11 17 21)
 
