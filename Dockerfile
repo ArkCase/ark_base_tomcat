@@ -52,8 +52,6 @@ RUN apt-get -y install \
       && \
     apt-get clean
 
-COPY --chown=root:root --chmod=0755 apache-download /usr/local/bin
-
 ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_KEYS_URL
 ARG TOMCAT_URL
