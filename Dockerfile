@@ -39,7 +39,7 @@ RUN apt-get -y install \
 #
 # Build the Tomcat native APR connector
 #
-COPY --chown=root:root --chmod=0755 build-script apache-download /usr/local/bin
+COPY --chown=root:root --chmod=0755 build-script /usr/local/bin
 RUN build-script
 
 FROM "${BASE_IMG}"
