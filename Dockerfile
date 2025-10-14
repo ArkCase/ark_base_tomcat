@@ -7,15 +7,15 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="9.0.109"
+ARG VER="9.0.111"
 
 ARG TOMCAT_MAJOR_VER="9"
-ARG TOMCAT_TGZ="apache-tomcat-${VER}.tar.gz"
-ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/${TOMCAT_TGZ}"
+ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
+ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
 ARG TOMCAT_NATIVE_VER="1.3.1"
-ARG TOMCAT_NATIVE_TGZ="tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
-ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/${TOMCAT_NATIVE_TGZ}"
+ARG TOMCAT_NATIVE_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-connectors/KEYS"
+ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
 ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
@@ -26,6 +26,10 @@ ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
 
 FROM "${BASE_IMG}" AS builder
 
+ARG TOMCAT_NATIVE_KEYS_URL
+ARG TOMCAT_NATIVE_URL
+ARG TOMCAT_NATIVE_BUILD_HOME
+
 RUN apt-get -y install \
         libapr1-dev \
         libssl-dev \
@@ -35,12 +39,8 @@ RUN apt-get -y install \
 #
 # Build the Tomcat native APR connector
 #
-ARG TOMCAT_NATIVE_TGZ
-ARG TOMCAT_NATIVE_URL
-ARG TOMCAT_NATIVE_BUILD_HOME
-ENV TOMCAT_NATIVE_BUILD_HOME="${TOMCAT_NATIVE_BUILD_HOME}"
-COPY --chown=root:root build-script /
-RUN /build-script
+COPY --chown=root:root --chmod=0755 build-script apache-download /usr/local/bin
+RUN build-script
 
 FROM "${BASE_IMG}"
 
@@ -52,9 +52,11 @@ RUN apt-get -y install \
       && \
     apt-get clean
 
+COPY --chown=root:root --chmod=0755 apache-download /usr/local/bin
+
 ARG TOMCAT_NATIVE_BUILD_HOME
-ARG TOMCAT_TGZ
-ARG TOMCAT_SRC
+ARG TOMCAT_KEYS_URL
+ARG TOMCAT_URL
 
 ENV TOMCAT_HOME="${BASE_DIR}/tomcat"
 ENV TOMCAT_LIB="${TOMCAT_HOME}/lib"
@@ -62,20 +64,15 @@ ENV TOMCAT_NATIVE_HOME="${TOMCAT_LIB}/native"
 
 ENV CATALINA_HOME="${TOMCAT_HOME}"
 ENV CATALINA_BASE="${CATALINA_HOME}"
+
 #
 # Download and install Tomcat, and remove unwanted stuff
 #
-RUN export TOMCAT_ASC="${TOMCAT_TGZ}.asc" && \
-    export TOMCAT_SUM="${TOMCAT_TGZ}.sha512" && \
+RUN apache-download "${TOMCAT_URL}" "${TOMCAT_KEYS_URL}" "/tomcat.tar.gz" && \
     mkdir -p "${TOMCAT_HOME}" && \
-    curl -fsSL -o "${TOMCAT_TGZ}" "${TOMCAT_SRC}" && \
-    curl -fsSL -o "${TOMCAT_ASC}" "${TOMCAT_SRC}.asc" && \
-    curl -fsSL -o "${TOMCAT_SUM}" "${TOMCAT_SRC}.sha512" && \
-    sha512sum -c "${TOMCAT_SUM}" && \
-    gpg --auto-key-retrieve --verify "${TOMCAT_ASC}" "${TOMCAT_TGZ}" && \
-    tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TOMCAT_TGZ}" && \
-    rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat && \
-    rm -rf "${TOMCAT_TGZ}" "${TOMCAT_ASC}" "${TOMCAT_SUM}"
+    tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "/tomcat.tar.gz" && \
+    rm -rf "/tomcat.tar.gz" && \
+    rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
 COPY --from=builder "${TOMCAT_NATIVE_BUILD_HOME}/" "${TOMCAT_NATIVE_HOME}/"
 

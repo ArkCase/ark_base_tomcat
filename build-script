@@ -1,43 +1,32 @@
 #!/bin/bash
 
 set -euo pipefail
-
 . /.functions
 
 define_base_vars "${0}"
 
+[ -v TOMCAT_NATIVE_KEYS_URL ] || fail "Don't have a TOMCAT_NATIVE_KEYS_URL to download from"
 [ -v TOMCAT_NATIVE_URL ] || fail "Don't have a TOMCAT_NATIVE_URL to download from"
+
 set_or_default TOMCAT_NATIVE_BUILD_HOME "/tomcat-native"
 
 cleanup()
 {
-	rm -rf "${SRC}" &>/dev/null
-	rm -rf "${BUILDS[@]}" &>/dev/null
+	[ -v SRC ] && rm -rf "${SRC}" &>/dev/null
+	[ -v BUILDS ] && rm -rf "${BUILDS[@]}" &>/dev/null
 }
 
-SRC="${TOMCAT_NATIVE_BUILD_HOME}/${TOMCAT_NATIVE_TGZ}"
-ASC="${SRC}.asc"
-SUM="${SRC}.sha512"
-BUILDS=()
+TOMCAT_NATIVE_BUILD_HOME="$(readlink -f "${TOMCAT_NATIVE_BUILD_HOME}")"
 
 mkdir -p "${TOMCAT_NATIVE_BUILD_HOME}"
-doing "Downloading the source file from [${TOMCAT_NATIVE_URL}]..."
-curl -fsSL -o "${SRC}" "${TOMCAT_NATIVE_URL}" || fail "Failed to download the source code"
-curl -fsSL -o "${ASC}" "${TOMCAT_NATIVE_URL}.asc" || fail "Failed to download the source code signature"
-curl -fsSL -o "${SUM}" "${TOMCAT_NATIVE_URL}.sha512" || fail "Failed to download the source code checksum"
-ok "Source code downloaded!"
+SRC="${TOMCAT_NATIVE_BUILD_HOME}/source.tar.gz"
+apache-download "${TOMCAT_NATIVE_URL}" "${TOMCAT_NATIVE_KEYS_URL}" "${SRC}"
 trap cleanup EXIT
-
-(
-	set -euo pipefail
-	cd "${TOMCAT_NATIVE_BUILD_HOME}"
-	sha512sum -c "${SUM}"
-	gpg --auto-key-retrieve --verify "${ASC}" "${SRC}"
-) || fail "Failed to verify the authenticity of the downloaded code"
 
 JAVA_VERSIONS=(11 17 21)
 
 running "Building for Java versions [${JAVA_VERSIONS[@]}]"
+BUILDS=()
 for JAVA in "${JAVA_VERSIONS[@]}" ; do
 	say "Building for Java ${JAVA}..."
 	set-java "${JAVA}" || fail "Failed to set the Java version to ${JAVA}"
