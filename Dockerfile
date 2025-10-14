@@ -7,9 +7,9 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="9.0.109"
+ARG VER="10.1.48"
 
-ARG TOMCAT_MAJOR_VER="9"
+ARG TOMCAT_MAJOR_VER="10"
 ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
 ARG TOMCAT_NATIVE_VER="1.3.1"
