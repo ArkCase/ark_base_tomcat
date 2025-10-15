@@ -62,6 +62,10 @@ ENV TOMCAT_NATIVE_HOME="${TOMCAT_LIB}/native"
 
 ENV CATALINA_HOME="${TOMCAT_HOME}"
 ENV CATALINA_BASE="${CATALINA_HOME}"
+ENV CATALINA_TMPDIR="${TEMP_DIR}/tomcat"
+ENV CATALINA_OUT="${LOGS_DIR}/catalina.out"
+
+RUN mkdir -p "${CATALINA_TMPDIR}"
 
 #
 # Download and install Tomcat, and remove unwanted stuff
