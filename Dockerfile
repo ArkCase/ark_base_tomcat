@@ -70,7 +70,7 @@ RUN mkdir -p "${CATALINA_TMPDIR}"
 #
 # Download and install Tomcat, and remove unwanted stuff
 #
-RUN apache-download "${TOMCAT_URL}" "${TOMCAT_KEYS_URL}" "/tomcat.tar.gz" && \
+RUN verified-download --keys "${TOMCAT_KEYS_URL}" "${TOMCAT_URL}" "/tomcat.tar.gz" && \
     mkdir -p "${TOMCAT_HOME}" && \
     tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "/tomcat.tar.gz" && \
     rm -rf "/tomcat.tar.gz" && \

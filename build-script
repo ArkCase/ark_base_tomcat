@@ -20,7 +20,7 @@ TOMCAT_NATIVE_BUILD_HOME="$(readlink -f "${TOMCAT_NATIVE_BUILD_HOME}")"
 
 mkdir -p "${TOMCAT_NATIVE_BUILD_HOME}"
 SRC="${TOMCAT_NATIVE_BUILD_HOME}/source.tar.gz"
-apache-download "${TOMCAT_NATIVE_URL}" "${TOMCAT_NATIVE_KEYS_URL}" "${SRC}"
+verified-download --keys "${TOMCAT_NATIVE_KEYS_URL}" "${TOMCAT_NATIVE_URL}" "${SRC}"
 trap cleanup EXIT
 
 JAVA_VERSIONS=(11 17 21)
