@@ -20,5 +20,4 @@ if "install-tomcat-native-module" ; then
 	#
 	echo "The Tomcat Native module was installed"
 	export LD_LIBRARY_PATH="${CATALINA_BASE}/lib:${LD_LIBRARY_PATH}"
-	echo "export LD_LIBRARY_PATH=${LD_LIBRARY_PATH@Q}"
 fi
