@@ -75,10 +75,11 @@ RUN mkdir -p "${CATALINA_TMPDIR}"
 #
 # Download and install Tomcat, and remove unwanted stuff
 #
-RUN verified-download --keys "${TOMCAT_KEYS_URL}" "${TOMCAT_URL}" "/tomcat.tar.gz" && \
+RUN TARFILE="/tomcat.tar.gz" && \
+    verified-download --keys "${TOMCAT_KEYS_URL}" "${TOMCAT_URL}" "${TARFILE}" && \
     mkdir -p "${TOMCAT_HOME}" && \
-    tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "/tomcat.tar.gz" && \
-    rm -rf "/tomcat.tar.gz" && \
+    tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TARFILE}" && \
+    rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
 COPY --from=builder "${TOMCAT_NATIVE_BUILD_HOME}/" "${TOMCAT_NATIVE_HOME}/"
