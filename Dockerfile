@@ -7,15 +7,12 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-# ARG VER="9.0.111"
-ARG VER="11.0.13"
+ARG VER="11.0.15"
 
-# ARG TOMCAT_MAJOR_VER="9"
-ARG TOMCAT_MAJOR_VER="11"
+ARG TOMCAT_MAJOR_VER="${VER%%.*}"
 ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
 ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
-# ARG TOMCAT_NATIVE_VER="1.3.1"
 ARG TOMCAT_NATIVE_VER="2.0.9"
 ARG TOMCAT_NATIVE_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-connectors/KEYS"
 ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
