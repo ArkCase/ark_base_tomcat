@@ -7,7 +7,7 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="11.0.15"
+ARG VER="9.0.113"
 
 ARG TOMCAT_MAJOR_VER="${VER%%.*}"
 ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
