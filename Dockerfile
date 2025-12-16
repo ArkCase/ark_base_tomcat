@@ -7,9 +7,13 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="9.0.109"
+ARG VER="9.0.113"
 
-ARG TOMCAT_MAJOR_VER="9"
+# In addition to tomcat-X.Y.Z, we also publish tomcat-X and tomcat-X.Y
+ARG PUBLISH_MAJOR="true"
+ARG PUBLISH_MINOR="true"
+
+ARG TOMCAT_MAJOR_VER="${VER%%.*}"
 ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
 ARG TOMCAT_NATIVE_VER="1.3.1"
