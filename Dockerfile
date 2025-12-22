@@ -17,7 +17,7 @@ ARG TOMCAT_MAJOR_VER="${VER%%.*}"
 ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
 ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
-ARG TOMCAT_NATIVE_VER="1.3.1"
+ARG TOMCAT_NATIVE_VER="1.2.39"
 ARG TOMCAT_NATIVE_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-connectors/KEYS"
 ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
 ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
