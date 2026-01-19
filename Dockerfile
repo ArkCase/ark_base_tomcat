@@ -14,13 +14,9 @@ ARG PUBLISH_MAJOR="true"
 ARG PUBLISH_MINOR="true"
 
 ARG TOMCAT_MAJOR_VER="${VER%%.*}"
+ARG TOMCAT_MINOR_VER="${VER%.*}"
 ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
 ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
-
-ARG TOMCAT_NATIVE_VER="2.0.9"
-ARG TOMCAT_NATIVE_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-connectors/KEYS"
-ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
-ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
 ARG BASE_REPO="arkcase/base-java"
@@ -28,27 +24,19 @@ ARG BASE_VER="22.04"
 ARG BASE_VER_PFX=""
 ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
 
-FROM "${BASE_IMG}" AS builder
+ARG TOMCAT_NATIVE_BASE_REG="${BASE_REGISTRY}"
+ARG TOMCAT_NATIVE_REPO="arkcase/tomcat-native"
+ARG TOMCAT_NATIVE_VER="latest"
+ARG TOMCAT_NATIVE_BASE_PFX="${BASE_VER_PFX}"
+ARG TOMCAT_NATIVE_IMG="${TOMCAT_NATIVE_BASE_REG}/${TOMCAT_NATIVE_REPO}:${TOMCAT_NATIVE_BASE_PFX}${TOMCAT_NATIVE_VER}"
 
-ARG TOMCAT_NATIVE_KEYS_URL
-ARG TOMCAT_NATIVE_URL
-ARG TOMCAT_NATIVE_BUILD_HOME
-
-RUN apt-get -y install \
-        libapr1-dev \
-        libssl-dev \
-      && \
-    apt-get clean
-
-#
-# Build the Tomcat native APR connector
-#
-COPY --chown=root:root --chmod=0755 build-script /usr/local/bin
-RUN build-script
+FROM "${TOMCAT_NATIVE_IMG}" AS tomcat-native
 
 FROM "${BASE_IMG}"
 
 ARG VER
+ARG TOMCAT_MAJOR_VER
+ARG TOMCAT_MINOR_VER
 
 # Install the only binary dependency for the native library
 RUN apt-get -y install \
@@ -60,6 +48,9 @@ ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_KEYS_URL
 ARG TOMCAT_URL
 
+ENV TOMCAT_VER="${VER}"
+ENV TOMCAT_MAJOR_VER="${TOMCAT_MAJOR_VER}"
+ENV TOMCAT_MINOR_VER="${TOMCAT_MINOR_VER}"
 ENV TOMCAT_HOME="${BASE_DIR}/tomcat"
 ENV TOMCAT_LIB="${TOMCAT_HOME}/lib"
 ENV TOMCAT_NATIVE_HOME="${TOMCAT_LIB}/native"
@@ -83,7 +74,7 @@ RUN TARFILE="/tomcat.tar.gz" && \
     rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
-COPY --from=builder "${TOMCAT_NATIVE_BUILD_HOME}/" "${TOMCAT_NATIVE_HOME}/"
+COPY --from=tomcat-native / "${TOMCAT_NATIVE_HOME}/"
 
 COPY setenv.sh "${TOMCAT_HOME}/bin"
 COPY --chown=root:root --chmod=0755 install-tomcat-native-module set-session-cookie-name "/usr/local/bin"
