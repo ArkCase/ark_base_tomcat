@@ -61,6 +61,7 @@ ENV CATALINA_TMPDIR="${TEMP_DIR}/tomcat"
 ENV CATALINA_OUT="${LOGS_DIR}/catalina.out"
 
 ENV PATH="${TOMCAT_HOME}/bin:${PATH}"
+ENV SSL_DH_APPEND="true"
 
 RUN mkdir -p "${CATALINA_TMPDIR}"
 
