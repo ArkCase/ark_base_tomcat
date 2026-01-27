@@ -74,7 +74,12 @@ RUN TARFILE="/tomcat.tar.gz" && \
     rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
-COPY --from=tomcat-native / "${TOMCAT_NATIVE_HOME}/"
+COPY --chown=root:root --chmod=0444 logging.properties catalina.properties.extra "${TOMCAT_HOME}/conf/"
 
-COPY setenv.sh "${TOMCAT_HOME}/bin"
+RUN cd "${TOMCAT_HOME}/conf" && \
+    cat catalina.properties.extra >> catalina.properties
+
+COPY --from=tomcat-native --chown=root:root / "${TOMCAT_NATIVE_HOME}/"
+
+COPY --chown=root:root --chmod=0755 setenv.sh "${TOMCAT_HOME}/bin"
 COPY --chown=root:root --chmod=0755 install-tomcat-native-module set-session-cookie-name "/usr/local/bin"
