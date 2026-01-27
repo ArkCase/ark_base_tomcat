@@ -46,7 +46,9 @@ if is_dir_readable "${SOURCE_DIR}" ; then
 	TOMCAT_NATIVE_VER="$(basename "$(dirname "$(readlink -f .)")")"
 	doing "Installing the ${MODULE} binaries ..."
 	tar -cf - * | tar -C "${CATALINA_LIB}" -xvf -
-	quit "${MODULE} for Java ${CURRENT_JAVA} version ${TOMCAT_NATIVE_VER} copied into [${CATALINA_LIB}]"
+	set_or_default LD_LIBRARY_PATH
+	export LD_LIBRARY_PATH="$(sanitize_pathspec "${CATALINA_LIB}${LD_LIBRARY_PATH:+:}${LD_LIBRARY_PATH}")"
+	quit "${MODULE} for Java ${CURRENT_JAVA} version ${TOMCAT_NATIVE_VER} copied into [${CATALINA_LIB}] (LD_LIBRARY_PATH=${LD_LIBRARY_PATH@Q})"
 fi
 
 AVAILABLE=()
