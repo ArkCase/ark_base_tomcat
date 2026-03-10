@@ -7,80 +7,81 @@
 ###########################################################################################################
 
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="9.0.113"
+ARG VER="11.0.15"
 
 # In addition to tomcat-X.Y.Z, we also publish tomcat-X and tomcat-X.Y
 ARG PUBLISH_MAJOR="true"
 ARG PUBLISH_MINOR="true"
 
 ARG TOMCAT_MAJOR_VER="${VER%%.*}"
-ARG TOMCAT_SRC="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
-
-ARG TOMCAT_NATIVE_VER="1.3.1"
-ARG TOMCAT_NATIVE_URL="https://archive.apache.org/dist/tomcat/tomcat-connectors/native/${TOMCAT_NATIVE_VER}/source/tomcat-native-${TOMCAT_NATIVE_VER}-src.tar.gz"
-ARG TOMCAT_NATIVE_BUILD_HOME="/tomcat-native"
+ARG TOMCAT_MINOR_VER="${VER%.*}"
+ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
+ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
 ARG BASE_REPO="arkcase/base-java"
-ARG BASE_VER="8"
+ARG BASE_VER="24.04"
 ARG BASE_VER_PFX=""
 ARG BASE_IMG="${BASE_REGISTRY}/${BASE_REPO}:${BASE_VER_PFX}${BASE_VER}"
 
-FROM "${BASE_IMG}" AS builder
+ARG TOMCAT_NATIVE_BASE_REG="${BASE_REGISTRY}"
+ARG TOMCAT_NATIVE_REPO="arkcase/tomcat-native"
+ARG TOMCAT_NATIVE_VER="latest"
+ARG TOMCAT_NATIVE_BASE_PFX="${BASE_VER_PFX}"
+ARG TOMCAT_NATIVE_IMG="${TOMCAT_NATIVE_BASE_REG}/${TOMCAT_NATIVE_REPO}:${TOMCAT_NATIVE_BASE_PFX}${TOMCAT_NATIVE_VER}"
 
-RUN yum -y install \
-        apr-devel \
-        gcc \
-        make \
-        openssl-devel \
-        redhat-rpm-config \
-        unzip \
-      && \
-    yum clean -y all
-
-#
-# Build the Tomcat native APR connector
-#
-ARG TOMCAT_NATIVE_URL
-ARG TOMCAT_NATIVE_BUILD_HOME
-ENV TOMCAT_NATIVE_BUILD_HOME="${TOMCAT_NATIVE_BUILD_HOME}"
-COPY --chown=root:root build-script /
-RUN /build-script
+FROM "${TOMCAT_NATIVE_IMG}" AS tomcat-native
 
 FROM "${BASE_IMG}"
 
 ARG VER
+ARG TOMCAT_MAJOR_VER
+ARG TOMCAT_MINOR_VER
 
 # Install the only binary dependency for the native library
-RUN yum -y install \
-        apr \
-        unzip \
+RUN apt-get -y install \
+        libapr1 \
       && \
-    yum clean -y all
+    apt-get clean
 
 ARG TOMCAT_NATIVE_BUILD_HOME
-ARG TOMCAT_SRC
+ARG TOMCAT_KEYS_URL
+ARG TOMCAT_URL
 
-ARG BASE_DIR="/app"
-ARG TOMCAT_HOME="${BASE_DIR}/tomcat"
+ENV TOMCAT_VER="${VER}"
+ENV TOMCAT_MAJOR_VER="${TOMCAT_MAJOR_VER}"
+ENV TOMCAT_MINOR_VER="${TOMCAT_MINOR_VER}"
 ENV TOMCAT_HOME="${BASE_DIR}/tomcat"
-
-ARG TOMCAT_LIB="${TOMCAT_HOME}/lib"
 ENV TOMCAT_LIB="${TOMCAT_HOME}/lib"
-
-ARG TOMCAT_NATIVE_HOME="${TOMCAT_LIB}/native"
-ENV TOMCAT_NATIVE_HOME="${TOMCAT_NATIVE_HOME}"
+ENV TOMCAT_NATIVE_HOME="${TOMCAT_LIB}/native"
 
 ENV CATALINA_HOME="${TOMCAT_HOME}"
 ENV CATALINA_BASE="${CATALINA_HOME}"
+ENV CATALINA_TMPDIR="${TEMP_DIR}/tomcat"
+ENV CATALINA_OUT="${LOGS_DIR}/catalina.out"
+ENV WORK_DIR="${CATALINA_TMPDIR}"
+
+ENV PATH="${TOMCAT_HOME}/bin:${PATH}"
+ENV SSL_DH_APPEND="true"
+
+RUN mkdir -p "${CATALINA_TMPDIR}"
+
 #
 # Download and install Tomcat, and remove unwanted stuff
 #
-RUN mkdir -p "${TOMCAT_HOME}" && \
-    curl -fsSL "${TOMCAT_SRC}" | tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf - && \
+RUN TARFILE="/tomcat.tar.gz" && \
+    verified-download --keys "${TOMCAT_KEYS_URL}" "${TOMCAT_URL}" "${TARFILE}" && \
+    mkdir -p "${TOMCAT_HOME}" && \
+    tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TARFILE}" && \
+    rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
-COPY --from=builder "${TOMCAT_NATIVE_BUILD_HOME}/" "${TOMCAT_NATIVE_HOME}/"
+COPY --chown=root:root --chmod=0444 logging.properties catalina.properties.extra "${TOMCAT_HOME}/conf/"
 
-COPY setenv.sh "${TOMCAT_HOME}/bin"
+RUN cd "${TOMCAT_HOME}/conf" && \
+    cat catalina.properties.extra >> catalina.properties
+
+COPY --from=tomcat-native --chown=root:root / "${TOMCAT_NATIVE_HOME}/"
+
+COPY --chown=root:root --chmod=0755 setenv.sh "${TOMCAT_HOME}/bin"
 COPY --chown=root:root --chmod=0755 install-tomcat-native-module set-session-cookie-name "/usr/local/bin"

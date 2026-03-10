@@ -3,14 +3,15 @@
 set -euo pipefail
 . /.functions
 
-set_as_boolean TOMCAT_NATIVE_ENABLE "true"
+MODULE="Tomcat Native Connector"
 
-as_boolean "${TOMCAT_NATIVE_ENABLE}" || fail "The Tomcat native connector is not enabled"
+set_as_boolean TOMCAT_NATIVE_ENABLE "true"
+as_boolean "${TOMCAT_NATIVE_ENABLE}" || fail "The ${MODULE} is not enabled"
 
 #
 # First off, which JVM are we on?
 #
-CURRENT_JAVA="$(get-java)" || fail "Failed to determine the JVM version"
+CURRENT_JAVA="$(get-java)" || fail "Failed to determine the current Java version"
 
 [ -v CATALINA_HOME ] || fail "CATALINA_HOME is not set"
 [ -n "${CATALINA_HOME}" ] || fail "CATALINA_HOME is set to an empty value"
@@ -19,15 +20,39 @@ require_dir_readable "${CATALINA_HOME}"
 CATALINA_LIB="${CATALINA_HOME}/lib"
 require_dir_readwrite "${CATALINA_LIB}"
 
-CATALINA_NATIVE_LIB="${CATALINA_LIB}/native"
-require_dir_readable "${CATALINA_NATIVE_LIB}"
+set_or_default TOMCAT_NATIVE_HOME "${CATALINA_LIB}/native"
+require_dir_readable "${TOMCAT_NATIVE_HOME}"
 
-SOURCE_DIR="${CATALINA_NATIVE_LIB}/${CURRENT_JAVA}"
-require_dir_readable "${SOURCE_DIR}"
-
-cd "${SOURCE_DIR}"
 doing "Clearing out any old modules..."
 rm -rvf "${CATALINA_LIB}"/libtcnative* || true
-doing "Installing the modules for Java ${CURRENT_JAVA}..."
-cp -vf * "${CATALINA_LIB}"
-quit "Tomcat native connector for Java ${CURRENT_JAVA} copied into [${CATALINA_LIB}]"
+
+set_or_default TOMCAT_NATIVE_VER
+if [ -z "${TOMCAT_NATIVE_VER}" ] ; then
+	export TOMCAT_NATIVE_VER="2.0"
+	# Determine the default native version based on the Tomcat version.
+	# It's still allowed to select a different version if you want, but
+	# as always YMMV depending on the circumstances.
+	case "${TOMCAT_MAJOR_VER}" in
+		9	) TOMCAT_NATIVE_VER="1.2" ;;
+		10	) TOMCAT_NATIVE_VER="1.3" ;;
+	esac
+	eyes "No specific version for the ${MODULE} configured, will use the default value of ${TOMCAT_NATIVE_VER} (use TOMCAT_NATIVE_VER to set it)"
+fi
+
+SOURCE_DIR="${TOMCAT_NATIVE_HOME}/${TOMCAT_NATIVE_VER}/${CURRENT_JAVA}"
+if is_dir_readable "${SOURCE_DIR}" ; then
+	cd "${SOURCE_DIR}"
+	# Get the exact version, for display purposes
+	TOMCAT_NATIVE_VER="$(basename "$(dirname "$(readlink -f .)")")"
+	doing "Installing the ${MODULE} binaries ..."
+	tar -cf - * | tar -C "${CATALINA_LIB}" -xvf -
+	set_or_default LD_LIBRARY_PATH
+	export LD_LIBRARY_PATH="$(sanitize_pathspec "${CATALINA_LIB}${LD_LIBRARY_PATH:+:}${LD_LIBRARY_PATH}")"
+	quit "${MODULE} for Java ${CURRENT_JAVA} version ${TOMCAT_NATIVE_VER} copied into [${CATALINA_LIB}] (LD_LIBRARY_PATH=${LD_LIBRARY_PATH@Q})"
+fi
+
+AVAILABLE=()
+readarray -t AVAILABLE < <(find -L "${TOMCAT_NATIVE_HOME}" -mindepth 2 -maxdepth 2 -type d -name "${CURRENT_JAVA}" | sed -e "s;^${TOMCAT_NATIVE_HOME}/;;g" -e 's;/.*$;;g' | sort -V)
+[ ${#AVAILABLE[@]} -eq 0 ] && fail "There are no versions of the ${MODULE} available for Java ${CURRENT_JAVA}"
+err "Could not find the ${MODULE} version ${TOMCAT_NATIVE_VER} for Java ${CURRENT_JAVA}"
+fail "These are the available versions for Java ${CURRENT_JAVA}: [ ${AVAILABLE[@]} ]"
