@@ -8,7 +8,7 @@
 
 ARG FIPS=""
 ARG PUBLIC_REGISTRY="public.ecr.aws"
-ARG VER="11.0.15"
+ARG VER="11.0.20"
 
 # In addition to tomcat-X.Y.Z, we also publish tomcat-X and tomcat-X.Y
 ARG PUBLISH_MAJOR="true"
