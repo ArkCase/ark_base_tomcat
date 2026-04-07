@@ -35,6 +35,7 @@ FROM "${TOMCAT_NATIVE_IMG}" AS tomcat-native
 
 FROM "${BASE_IMG}"
 
+ARG FIPS
 ARG VER
 ARG TOMCAT_MAJOR_VER
 ARG TOMCAT_MINOR_VER
@@ -77,11 +78,7 @@ RUN TARFILE="/tomcat.tar.gz" && \
     rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
-#
-# This should only be done if building in FIPS mode
-#
-RUN test -n "${FIPS}" || exit 0 ; \
-    cp -vf "${BC_DIR}"/*.jar "${TOMCAT_HOME}/lib"
+RUN export APP_LIB_DIRS="${TOMCAT_LIB}" && deploy-fips-crypto
 
 COPY --chown=root:root --chmod=0444 logging.properties catalina.properties.extra "${TOMCAT_HOME}/conf/"
 
