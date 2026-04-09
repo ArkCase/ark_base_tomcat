@@ -78,8 +78,6 @@ RUN TARFILE="/tomcat.tar.gz" && \
     rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
 
-RUN export APP_LIB_DIRS="${TOMCAT_LIB}" && deploy-fips-crypto
-
 COPY --chown=root:root --chmod=0444 logging.properties catalina.properties.extra "${TOMCAT_HOME}/conf/"
 
 RUN cd "${TOMCAT_HOME}/conf" && \
