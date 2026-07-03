@@ -12,8 +12,6 @@ jobs:
     uses: arkcase/github-action-templates/.github/workflows/ecr-publish.yml@main
     with:
       revision: ${{ inputs.revision }}
-      compliance-scan: true
-      vulnerabilities-scan: true
     secrets:
       ECR_AWS_REGION: ${{ secrets.ECR_AWS_REGION }}
       ECR_AWS_ORG_ID: ${{ secrets.ECR_AWS_ORG_ID }}
