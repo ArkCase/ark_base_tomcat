@@ -33,8 +33,7 @@ if [ -z "${TOMCAT_NATIVE_VER}" ] ; then
 	# It's still allowed to select a different version if you want, but
 	# as always YMMV depending on the circumstances.
 	case "${TOMCAT_MAJOR_VER}" in
-		9	) TOMCAT_NATIVE_VER="1.2" ;;
-		10	) TOMCAT_NATIVE_VER="1.3" ;;
+		9 | 10	) TOMCAT_NATIVE_VER="1.3" ;;
 	esac
 	eyes "No specific version for the ${MODULE} configured, will use the default value of ${TOMCAT_NATIVE_VER} (use TOMCAT_NATIVE_VER to set it)"
 fi
