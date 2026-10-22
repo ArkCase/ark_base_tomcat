@@ -17,6 +17,7 @@ ARG PUBLISH_MINOR="true"
 ARG TOMCAT_MAJOR_VER="${VER%%.*}"
 ARG TOMCAT_MINOR_VER="${VER%.*}"
 ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_VER}/KEYS"
+ARG TOMCAT_KEYS_SIGNER="@apache[.]org$"
 ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
@@ -48,6 +49,7 @@ RUN apt-get -y install \
 
 ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_KEYS_URL
+ARG TOMCAT_KEYS_SIGNER
 ARG TOMCAT_URL
 
 ENV TOMCAT_VER="${VER}"
@@ -71,7 +73,7 @@ RUN mkdir -p "${CATALINA_TMPDIR}"
 # Download and install Tomcat, and remove unwanted stuff
 #
 RUN TARFILE="/tomcat.tar.gz" && \
-    verified-download --keys "${TOMCAT_KEYS_URL}" "${TOMCAT_URL}" "${TARFILE}" && \
+    verified-download --keys "${TOMCAT_KEYS_URL}" --signer "${TOMCAT_KEYS_SIGNER}" "${TOMCAT_URL}" "${TARFILE}" && \
     mkdir -p "${TOMCAT_HOME}" && \
     tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TARFILE}" && \
     rm -rf "${TARFILE}" && \
