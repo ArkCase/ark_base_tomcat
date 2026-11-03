@@ -41,12 +41,6 @@ ARG VER
 ARG TOMCAT_MAJOR_VER
 ARG TOMCAT_MINOR_VER
 
-# Install the only binary dependency for the native library
-RUN apt-get -y install \
-        libapr1 \
-      && \
-    apt-get clean
-
 ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_KEYS_URL
 ARG TOMCAT_KEYS_SIGNER
@@ -67,24 +61,34 @@ ENV WORK_DIR="${CATALINA_TMPDIR}"
 
 ENV PATH="${TOMCAT_HOME}/bin:${PATH}"
 
-RUN mkdir -p "${CATALINA_TMPDIR}"
-
-#
-# Download and install Tomcat, and remove unwanted stuff
-#
-RUN TARFILE="/tomcat.tar.gz" && \
+# Install the only binary dependency for the native library
+RUN --mount=type=bind,target=/src \
+    --mount=type=bind,from=tomcat-native,target=/native \
+    apt-get -y install \
+        libapr1 \
+      && \
+    apt-get clean && \
+    mkdir -p "${CATALINA_TMPDIR}" && \
+    TARFILE="/tomcat.tar.gz" && \
     verified-download --keys "${TOMCAT_KEYS_URL}" --signer "${TOMCAT_KEYS_SIGNER}" "${TOMCAT_URL}" "${TARFILE}" && \
     mkdir -p "${TOMCAT_HOME}" && \
     tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TARFILE}" && \
+    chmod -R u=rwX,go=rX "${TOMCAT_HOME}" && \
     rm -rf "${TARFILE}" && \
-    rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat
-
-COPY --chown=root:root --chmod=0444 logging.properties catalina.properties.extra "${TOMCAT_HOME}/conf/"
-
-RUN cd "${TOMCAT_HOME}/conf" && \
-    cat catalina.properties.extra >> catalina.properties
-
-COPY --from=tomcat-native --chown=root:root / "${TOMCAT_NATIVE_HOME}/"
-
-COPY --chown=root:root --chmod=0755 setenv.sh "${TOMCAT_HOME}/bin"
-COPY --chown=root:root --chmod=0755 install-tomcat-native-module set-session-cookie-name "/usr/local/bin"
+    rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat && \
+    install -m 0755 -o root -g root -t "${TOMCAT_HOME}/bin" \
+        /src/setenv.sh \
+      && \
+    install -m 0755 -o root -g root -t "/usr/local/bin" \
+        /src/install-tomcat-native-module \
+        /src/set-session-cookie-name \
+      && \
+    install -m 0444 -o root -g root -t "${TOMCAT_HOME}/conf/" \
+        /src/logging.properties \
+        /src/catalina.properties.extra \
+      && \
+    cat /src/catalina.properties.extra >> "${TOMCAT_HOME}/conf/catalina.properties" && \
+    mkdir -p "${TOMCAT_NATIVE_HOME}" && \
+    chown root:root "${TOMCAT_NATIVE_HOME}" && \
+    chmod 0755 "${TOMCAT_NATIVE_HOME}" && \
+    ( tar --group=root --owner=root --mode=u=rwX,go=rX -cvf - /native ) | tar -C "${TOMCAT_NATIVE_HOME}" --strip-components=1 -xvf -
