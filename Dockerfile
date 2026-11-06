@@ -20,6 +20,14 @@ ARG TOMCAT_KEYS_URL="https://downloads.apache.org/tomcat/tomcat-${TOMCAT_MAJOR_V
 ARG TOMCAT_KEYS_SIGNER="@apache[.]org$"
 ARG TOMCAT_URL="https://archive.apache.org/dist/tomcat/tomcat-${TOMCAT_MAJOR_VER}/v${VER}/bin/apache-tomcat-${VER}.tar.gz"
 
+# The Tomcat installation is owned by this user and group. Child images grant
+# their runtime user access by making it a member of TOMCAT_GROUP. This UID/GID
+# is unused in the images and the charts
+ARG TOMCAT_USER="tomcat"
+ARG TOMCAT_UID="10080"
+ARG TOMCAT_GROUP="${TOMCAT_USER}"
+ARG TOMCAT_GID="${TOMCAT_UID}"
+
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
 ARG BASE_REPO="arkcase/base-java"
 ARG BASE_VER="24.04"
@@ -45,6 +53,10 @@ ARG TOMCAT_NATIVE_BUILD_HOME
 ARG TOMCAT_KEYS_URL
 ARG TOMCAT_KEYS_SIGNER
 ARG TOMCAT_URL
+ARG TOMCAT_USER
+ARG TOMCAT_UID
+ARG TOMCAT_GROUP
+ARG TOMCAT_GID
 
 ENV TOMCAT_VER="${VER}"
 ENV TOMCAT_MAJOR_VER="${TOMCAT_MAJOR_VER}"
@@ -52,6 +64,10 @@ ENV TOMCAT_MINOR_VER="${TOMCAT_MINOR_VER}"
 ENV TOMCAT_HOME="${BASE_DIR}/tomcat"
 ENV TOMCAT_LIB="${TOMCAT_HOME}/lib"
 ENV TOMCAT_NATIVE_HOME="${TOMCAT_LIB}/native"
+ENV TOMCAT_USER="${TOMCAT_USER}" \
+    TOMCAT_UID="${TOMCAT_UID}" \
+    TOMCAT_GROUP="${TOMCAT_GROUP}" \
+    TOMCAT_GID="${TOMCAT_GID}"
 
 ENV CATALINA_HOME="${TOMCAT_HOME}"
 ENV CATALINA_BASE="${CATALINA_HOME}"
@@ -68,19 +84,20 @@ RUN --mount=type=bind,target=/src \
         libapr1 \
       && \
     apt-get clean && \
+    groupadd --system --gid "${TOMCAT_GID}" "${TOMCAT_GROUP}" && \
+    useradd --system --no-log-init --no-create-home --uid "${TOMCAT_UID}" --gid "${TOMCAT_GROUP}" --home-dir "${TOMCAT_HOME}" --shell /usr/sbin/nologin "${TOMCAT_USER}" && \
     mkdir -p "${CATALINA_TMPDIR}" && \
     TARFILE="/tomcat.tar.gz" && \
     verified-download --keys "${TOMCAT_KEYS_URL}" --signer "${TOMCAT_KEYS_SIGNER}" "${TOMCAT_URL}" "${TARFILE}" && \
     mkdir -p "${TOMCAT_HOME}" && \
     tar --strip-components=1 -C "${TOMCAT_HOME}" -xzvf "${TARFILE}" && \
-    chmod -R u=rwX,go=rX "${TOMCAT_HOME}" && \
     rm -rf "${TARFILE}" && \
     rm -rf "${TOMCAT_HOME}/webapps"/* "${TOMCAT_HOME}/temp"/* "${TOMCAT_HOME}/bin"/*.bat && \
     install -m 0755 -o root -g root -t "${TOMCAT_HOME}/bin" \
         /src/setenv.sh \
       && \
     install -m 0755 -o root -g root -t "/usr/local/bin" \
-        /src/install-tomcat-native-module \
+        /src/install-to-tomcat \
         /src/set-session-cookie-name \
       && \
     install -m 0444 -o root -g root -t "${TOMCAT_HOME}/conf/" \
@@ -88,7 +105,18 @@ RUN --mount=type=bind,target=/src \
         /src/catalina.properties.extra \
       && \
     cat /src/catalina.properties.extra >> "${TOMCAT_HOME}/conf/catalina.properties" && \
+    xmlstarlet ed -L -P \
+        --insert '/Server/Service/Engine/Host[not(@xmlBase)]' --type attr --name xmlBase --value '${java.io.tmpdir}/conf/Catalina/localhost' \
+        "${TOMCAT_HOME}/conf/server.xml" \
+      && \
     mkdir -p "${TOMCAT_NATIVE_HOME}" && \
-    chown root:root "${TOMCAT_NATIVE_HOME}" && \
-    chmod 0755 "${TOMCAT_NATIVE_HOME}" && \
-    ( tar --group=root --owner=root --mode=u=rwX,go=rX -cvf - /native ) | tar -C "${TOMCAT_NATIVE_HOME}" --strip-components=1 -xvf -
+    ( tar -cvf - /native ) | tar -C "${TOMCAT_NATIVE_HOME}" --strip-components=1 -xvf - && \
+    mkdir -p "${TOMCAT_HOME}/logs" "${TOMCAT_HOME}/temp" "${TOMCAT_HOME}/work" && \
+    chown -R "${TOMCAT_USER}:${TOMCAT_GROUP}" "${TOMCAT_HOME}" "${CATALINA_TMPDIR}" && \
+    chmod -R u=rwX,g=rX,o= "${TOMCAT_HOME}" && \
+    chmod 2770 \
+        "${TOMCAT_HOME}/webapps" \
+        "${TOMCAT_HOME}/logs" \
+        "${TOMCAT_HOME}/temp" \
+        "${TOMCAT_HOME}/work" \
+        "${CATALINA_TMPDIR}"

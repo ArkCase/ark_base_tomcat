@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# usage: install-to-tomcat [--writable] SOURCE... TARGET
+#
+# Copies each SOURCE into the directory TARGET within the Tomcat installation,
+# giving every copied file and directory the installation's ownership and modes:
+#
+#	owner		${TOMCAT_USER}:${TOMCAT_GROUP}
+#	directories	0750 (2770 with --writable)
+#	files		0640 (0750 if the source file is executable)
+#
+# A SOURCE may be a file or a directory (copied recursively). A SOURCE ending
+# in "/." copies the directory's contents (dotfiles included) instead of the
+# directory itself.
+#
+# TARGET may be absolute or relative to ${TOMCAT_HOME}, but it must be within
+# ${TOMCAT_HOME}. Any missing directories in its path are created with the same
+# ownership and modes.
+#
+# Only the copied files and directories are modified, so nothing else that the
+# Tomcat installation ships is ever touched (and thus re-shipped in a new image
+# layer).
+#
+# Must be run as root. Exits with 0 on success, and 1 otherwise (including
+# incorrect usage).
+#
+
+set -euo pipefail
+. /.functions
+
+usage()
+{
+	[ ${#} -gt 0 ] && err "${@}\n"
+	echo "usage: ${0##*/} [--writable] SOURCE... TARGET" 1>&2
+	exit 1
+}
+
+require_exe getopt
+
+# getopt reports what's wrong with the arguments by itself
+ARGS="$(getopt -o "hw" -l "help,writable" -n "${0##*/}" -- "${@}")" || usage
+
+WRITABLE="false"
+
+eval set -- "${ARGS}"
+while true ; do
+	case "${1}" in
+		--help | -h ) usage ;;
+
+		--writable | -w ) WRITABLE="true" ; shift ;;
+
+		-- ) shift ; break ;;
+
+		* ) usage "Unexpected argument [${1}]" ;;
+	esac
+done
+
+[ ${#} -ge 2 ] || usage "Must provide at least one SOURCE, and the TARGET"
+
+[ "$(id -u)" -eq 0 ] || fail "This script must be run as root"
+
+for VAR in TOMCAT_HOME TOMCAT_USER TOMCAT_GROUP ; do
+	[ -n "${!VAR:-}" ] || fail "The ${VAR} environment variable must be set"
+done
+require_dir_readable "${TOMCAT_HOME}"
+
+DIR_MODE="0750"
+as_boolean "${WRITABLE}" && DIR_MODE="2770"
+
+SOURCES=( "${@:1:$(( ${#} - 1 ))}" )
+TARGET="${@: -1}"
+[[ "${TARGET}" == /* ]] || TARGET="${TOMCAT_HOME}/${TARGET}"
+TARGET="$(readlink -m "${TARGET}")"
+
+HOME_DIR="$(readlink -f "${TOMCAT_HOME}")"
+[ "${TARGET}" == "${HOME_DIR}" ] || [[ "${TARGET}" == "${HOME_DIR}/"* ]] || fail "The target [${TARGET}] is not within the Tomcat installation at [${HOME_DIR}]"
+
+#
+# Create the missing directories in the target's path, with the right ownership
+#
+create_target()
+{
+	local DIR="${1}"
+	is_dir "${DIR}" && return 0
+	create_target "$(dirname "${DIR}")" || return ${?}
+	install -d -o "${TOMCAT_USER}" -g "${TOMCAT_GROUP}" -m "${DIR_MODE}" "${DIR}"
+}
+create_target "${TARGET}" || fail "Failed to create the target directory [${TARGET}]"
+
+for SOURCE in "${SOURCES[@]}" ; do
+	[ -e "${SOURCE}" ] || fail "The source [${SOURCE}] does not exist"
+
+	MEMBERS=()
+	if [ "${SOURCE##*/}" == "." ] ; then
+		# Copy the directory's contents, not the directory itself
+		SOURCE_DIR="${SOURCE%/.}"
+		readarray -d '' -t MEMBERS < <(find "${SOURCE_DIR}" -mindepth 1 -maxdepth 1 -printf '%P\0' | sort -z)
+	else
+		SOURCE_DIR="$(dirname "${SOURCE}")"
+		MEMBERS=( "$(basename "${SOURCE}")" )
+	fi
+	[ ${#MEMBERS[@]} -gt 0 ] || continue
+
+	doing "Installing [${SOURCE}] into [${TARGET}] ..."
+
+	# The ownership and modes travel in the archive, so only its members are affected
+	tar -C "${SOURCE_DIR}" --owner="${TOMCAT_USER}" --group="${TOMCAT_GROUP}" --mode="a-st,u=rwX,g=rX,o=" -cf - -- "${MEMBERS[@]}" | \
+		tar -C "${TARGET}" -xf - || fail "Failed to install [${SOURCE}] into [${TARGET}]"
+
+	# The archive can't give the directories a different mode than the files
+	if as_boolean "${WRITABLE}" ; then
+		( cd "${SOURCE_DIR}" && find "${MEMBERS[@]}" -type d -print0 ) | \
+			( cd "${TARGET}" && xargs -0 -r chmod "${DIR_MODE}" ) || fail "Failed to make the directories from [${SOURCE}] writable"
+	fi
+done
+
+ok "Installed ${#SOURCES[@]} source(s) into [${TARGET}]"
