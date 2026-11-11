@@ -110,7 +110,7 @@ RUN --mount=type=bind,target=/src \
         "${TOMCAT_HOME}/conf/server.xml" \
       && \
     mkdir -p "${TOMCAT_NATIVE_HOME}" && \
-    ( tar -cvf - /native ) | tar -C "${TOMCAT_NATIVE_HOME}" --strip-components=1 -xvf - && \
+    copy-tree -v /native/ "${TOMCAT_NATIVE_HOME}" && \
     mkdir -p "${TOMCAT_HOME}/logs" "${TOMCAT_HOME}/temp" "${TOMCAT_HOME}/work" && \
     chown -R "${TOMCAT_USER}:${TOMCAT_GROUP}" "${TOMCAT_HOME}" "${CATALINA_TMPDIR}" && \
     chmod -R u=rwX,g=rX,o= "${TOMCAT_HOME}" && \
