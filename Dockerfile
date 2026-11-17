@@ -28,6 +28,10 @@ ARG TOMCAT_UID="10080"
 ARG TOMCAT_GROUP="${TOMCAT_USER}"
 ARG TOMCAT_GID="${TOMCAT_UID}"
 
+ARG TOMCAT_HEADER_VALVE_VER="1.0.2"
+ARG TOMCAT_HEADER_VALVE_SRC="com.armedia.web.tomcat:remove-request-header-valve:${TOMCAT_HEADER_VALVE_VER}"
+ARG TOMCAT_HEADER_VALVE_REPO="https://nexus.armedia.com/repository/armedia/"
+
 ARG BASE_REGISTRY="${PUBLIC_REGISTRY}"
 ARG BASE_REPO="arkcase/base-java"
 ARG BASE_VER="24.04"
@@ -58,6 +62,9 @@ ARG TOMCAT_UID
 ARG TOMCAT_GROUP
 ARG TOMCAT_GID
 
+ARG TOMCAT_HEADER_VALVE_SRC
+ARG TOMCAT_HEADER_VALVE_REPO
+
 ENV TOMCAT_VER="${VER}"
 ENV TOMCAT_MAJOR_VER="${TOMCAT_MAJOR_VER}"
 ENV TOMCAT_MINOR_VER="${TOMCAT_MINOR_VER}"
@@ -80,6 +87,7 @@ ENV PATH="${TOMCAT_HOME}/bin:${PATH}"
 # Install the only binary dependency for the native library
 RUN --mount=type=bind,target=/src \
     --mount=type=bind,from=tomcat-native,target=/native \
+    --mount=type=secret,id=mvn_get_auth \
     apt-get -y install \
         libapr1 \
       && \
@@ -111,6 +119,8 @@ RUN --mount=type=bind,target=/src \
       && \
     mkdir -p "${TOMCAT_NATIVE_HOME}" && \
     copy-tree -v /native/ "${TOMCAT_NATIVE_HOME}" && \
+    . /run/secrets/mvn_get_auth && \
+    mvn-get "${TOMCAT_HEADER_VALVE_SRC}" "${TOMCAT_HEADER_VALVE_REPO}" "${TOMCAT_LIB}" && \
     mkdir -p "${TOMCAT_HOME}/logs" "${TOMCAT_HOME}/temp" "${TOMCAT_HOME}/work" && \
     chown -R "${TOMCAT_USER}:${TOMCAT_GROUP}" "${TOMCAT_HOME}" "${CATALINA_TMPDIR}" && \
     chmod -R u=rwX,g=rX,o= "${TOMCAT_HOME}" && \
