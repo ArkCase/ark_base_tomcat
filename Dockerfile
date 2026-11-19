@@ -129,4 +129,6 @@ RUN --mount=type=bind,target=/src \
         "${TOMCAT_HOME}/logs" \
         "${TOMCAT_HOME}/temp" \
         "${TOMCAT_HOME}/work" \
-        "${CATALINA_TMPDIR}"
+        "${CATALINA_TMPDIR}" \
+      && \
+    chown root "${TOMCAT_HOME}/bin"
